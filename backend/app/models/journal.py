@@ -84,6 +84,21 @@ class JournalEntry(TimestampMixin, Base):
         backref="reversal_entries",
     )
 
+    @property
+    def total_debit(self) -> Decimal:
+        """Sum of all line debits (equals ``total_credit`` for a balanced entry).
+
+        Read-only convenience for serialization; the balance invariant is
+        enforced in the service layer, not here. Requires ``lines`` to be
+        loaded (services eager-load them).
+        """
+        return sum((line.debit for line in self.lines), Decimal("0"))
+
+    @property
+    def total_credit(self) -> Decimal:
+        """Sum of all line credits. See :attr:`total_debit`."""
+        return sum((line.credit for line in self.lines), Decimal("0"))
+
     def __repr__(self) -> str:  # pragma: no cover - debug aid
         return f"<JournalEntry {self.entry_number} {self.status.value}>"
 
@@ -129,6 +144,16 @@ class JournalLine(Base):
 
     entry: Mapped[JournalEntry] = relationship(back_populates="lines")
     account: Mapped[Account] = relationship(back_populates="lines")
+
+    @property
+    def account_code(self) -> str:
+        """Code of the account this line touches (requires ``account`` loaded)."""
+        return self.account.code
+
+    @property
+    def account_name(self) -> str:
+        """Name of the account this line touches (requires ``account`` loaded)."""
+        return self.account.name
 
     def __repr__(self) -> str:  # pragma: no cover - debug aid
         return f"<JournalLine dr={self.debit} cr={self.credit}>"
