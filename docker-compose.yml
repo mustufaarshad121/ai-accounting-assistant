@@ -1,0 +1,64 @@
+# Local development stack for the AI-Powered Accounting Assistant.
+#
+# Credentials below are LOCAL DEVELOPMENT ONLY and must never be reused for
+# Supabase or any production environment. No database tables are created at
+# startup — schema is applied later via Alembic migrations (a future branch).
+#
+# Usage: docker compose up --build
+#   frontend -> http://localhost:3000
+#   backend  -> http://localhost:8000  (docs at /docs, health at /health)
+#   postgres -> localhost:5432
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: aaa_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: accounting_assistant
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d accounting_assistant"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  backend:
+    build:
+      context: ./backend
+    container_name: aaa_backend
+    environment:
+      # Local Docker DB (dev only). asyncpg URL for the app at runtime.
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/accounting_assistant
+      # Direct URL for Alembic migrations (dev only).
+      DIRECT_DATABASE_URL: postgresql://postgres:postgres@postgres:5432/accounting_assistant
+      FRONTEND_URL: http://localhost:3000
+      ENVIRONMENT: development
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    container_name: aaa_frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+    name: aaa_postgres_data
