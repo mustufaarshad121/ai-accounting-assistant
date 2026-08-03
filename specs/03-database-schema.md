@@ -83,8 +83,23 @@ Line rule: exactly one of debit/credit > 0 (the other = 0); both may not be 0; n
 - Posted entries never deleted; corrections via reversal (`reversed_entry_id`).
 
 ## Migrations
-Alembic. Initial migration creates enums + all tables. A seed migration/script inserts the default
-chart of accounts (see `04-accounting-rules.md`).
+Alembic, applied in **phases** that match the feature branches. Each phase adds only the tables its
+feature needs, so a branch never ships schema for capabilities it hasn't built. All tables above
+remain part of the final architecture; they are introduced in this order:
+
+| Phase / branch | Alembic revision adds | Tables |
+|---|---|---|
+| `feature/accounting-core` | accounting enums + core ledger | `accounts`, `journal_entries`, `journal_lines` |
+| `feature/reports` | monthly-review persistence | `audit_runs`, `audit_findings` |
+| `feature/ai-agent` | assistant persistence | `chat_threads`, `chat_messages`, `agent_tool_calls` |
+| later auth phase | prepared-for-auth (see `08`) | `profiles` |
+
+The **accounting-core** revision creates the three accounting enums (`account_type`, `entry_source`,
+`entry_status`) plus `accounts`, `journal_entries`, and `journal_lines` — with foreign keys, indexes,
+the unique `entry_number`/`code` constraints, and the per-line monetary CHECK constraints. It must
+**not** create the chat, audit, or `profiles` tables; those arrive in their own later revisions. The
+default chart of accounts (see `04-accounting-rules.md`) is inserted by an **idempotent seed process**
+(re-runnable without creating duplicates), kept separate from the schema migration.
 
 ## Edge cases
 - Concurrent entry-number generation → generate inside a transaction / sequence per year.
@@ -92,5 +107,8 @@ chart of accounts (see `04-accounting-rules.md`).
 - Deleting a POSTED entry → rejected at service layer.
 
 ## Acceptance
-Alembic upgrade creates all tables + enums; seed inserts 18 default accounts; a balanced entry with
-2 lines persists; an unbalanced entry is rejected before commit.
+The accounting-core Alembic upgrade creates the three accounting enums + `accounts`,
+`journal_entries`, `journal_lines` (and its downgrade reverses them cleanly); the idempotent seed
+inserts the 18 default accounts without duplicating on re-run; a balanced entry with 2 lines
+persists; an unbalanced entry is rejected before commit. Later phases add the audit, chat, and
+`profiles` tables in their own revisions.
