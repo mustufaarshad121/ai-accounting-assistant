@@ -15,10 +15,12 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
+import app.models  # noqa: F401  (registers ORM models on Base.metadata)
 from app.core.config import get_settings
 
-# Import the shared metadata. Models are registered on Base.metadata in later
-# feature branches; importing here keeps autogenerate wired up in advance.
+# Import the shared metadata plus the models package so every table is
+# registered on Base.metadata for autogenerate. Importing app.models has the
+# side effect of registering accounts/journal_entries/journal_lines.
 from app.db.base import Base
 
 config = context.config
