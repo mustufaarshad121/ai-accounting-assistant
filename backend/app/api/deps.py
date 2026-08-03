@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
 from app.services.accounting import AccountingService
+from app.services.reports import ReportService
 
 
 async def get_accounting_service(
@@ -21,3 +22,10 @@ async def get_accounting_service(
 ) -> AccountingService:
     """Return an :class:`AccountingService` bound to the request session."""
     return AccountingService(session)
+
+
+async def get_report_service(
+    session: AsyncSession = Depends(get_session),
+) -> ReportService:
+    """Return a read-only :class:`ReportService` bound to the request session."""
+    return ReportService(session)
