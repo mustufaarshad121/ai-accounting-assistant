@@ -18,11 +18,18 @@ acceptance criteria in `specs/10-acceptance-criteria.md`. **Specs are frozen bef
 
 ## Priority 2 — Scaffold + accounting core (branch `chore/project-scaffold`, then `feature/accounting-core`)
 - Scaffold FastAPI (uv) + Next.js (TS, App Router, Tailwind).
-- SQLAlchemy 2 models + Alembic initial migration (enums + tables per `specs/03`).
-- Seed default chart of accounts.
+- SQLAlchemy 2 models + **accounting-core Alembic migration** (enums + `accounts`, `journal_entries`,
+  `journal_lines` only — see the phased migration table in `specs/03`).
+- Seed default chart of accounts via an idempotent, re-runnable process (separate from the schema
+  migration).
 - `AccountingService`: build lines from templates, enforce balance, entry numbering, post.
 - Endpoints: accounts (GET/POST), entries (GET list/detail), income + expense create.
 - Reject unbalanced entries.
+
+> **Phased migrations.** Alembic revisions are added per feature branch, not all up front:
+> accounting-core adds the ledger tables; `feature/reports` adds `audit_runs`/`audit_findings`;
+> `feature/ai-agent` adds `chat_threads`/`chat_messages`/`agent_tool_calls`; a later auth phase adds
+> `profiles`. Every table remains part of the final architecture (`specs/03`).
 
 ## Priority 3 — Thin end-to-end slice (part of `feature/accounting-core` / `feature/frontend`)
 - Next.js New Entry form → FastAPI → service → Postgres → ledger list renders it.
